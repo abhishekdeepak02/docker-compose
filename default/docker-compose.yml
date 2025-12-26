@@ -16,67 +16,43 @@ services:
 #      service: network-deploy-service
 
   accountsdb:
-    image: mysql
     container_name: accounts_db
     ports:
       - 3306:3306
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 10s
-      retries: 10
-      interval: 10s
-      start_period: 10s
     environment:
-      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: accountsdb
     extends:
       file: common-config.yml
-      service: network-deploy-service
+      service: microservice-db-config
 
   loandb:
-    image: mysql
     container_name: loan_db
     ports:
-      - 3306:3306
-    healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
-      timeout: 10s
-      retries: 10
-      interval: 10s
-      start_period: 10s
+      - 3307:3306
     environment:
-      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: loandb
     extends:
       file: common-config.yml
-      service: network-deploy-service
+      service: microservice-db-config
 
   cardsdb:
-    image: mysql
     container_name: cards_db
     ports:
-      - 3306:3306
-    healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
-      timeout: 10s
-      retries: 10
-      interval: 10s
-      start_period: 10s
+      - 3308:3306
     environment:
-      MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: cardsdb
     extends:
       file: common-config.yml
-      service: network-deploy-service
+      service: microservice-db-config
 
   configserver:
     image: abhisamd02/configserver:2.0
     container_name: config_server
     ports:
       - "8071:8071"
-    depends_on:
-      rabbit:
-        condition: service_healthy
+#    depends_on:  # removing out as rabbit MQ dependency
+#      rabbit:
+#        condition: service_healthy
     # Adding health check(readiness & liveliness config) for config server
     healthcheck:
       test: "curl --fail --silent http://localhost:8071/actuator/health/readiness |grep UP || exit 1"
@@ -120,7 +96,7 @@ services:
       file: common-config.yml
       service: microservice-configserver-config
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:mysql://loandb:3307/loandb"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://loandb:3306/loandb" # As it's communicating internally use internal port 3306
 
   cards:
     image: abhisamd02/cards:2.0
@@ -136,7 +112,7 @@ services:
       file: common-config.yml
       service: microservice-configserver-config
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:mysql://cardsdb:3308/cardsdb"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://cardsdb:3306/cardsdb" # As it's communicating internally use internal port 3306
 networks:
   lazybank:
     driver: bridge
