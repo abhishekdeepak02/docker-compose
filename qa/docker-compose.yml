@@ -1,0 +1,118 @@
+services:
+#  rabbit:
+#    image: rabbitmq:4-management
+#    container_name: rabbitmq
+#    ports:
+#      - "5672:5672"
+#      - "15672:15672"
+#    healthcheck: # Adding health check for rabbitmq service
+#      test: rabbitmq-diagnostics -q check_running
+#      interval: 10s
+#      timeout: 5s
+#      retries: 10
+#      start_period: 5s
+#    extends:
+#      file: common-config.yml
+#      service: network-deploy-service
+
+  accountsdb:
+    container_name: accounts_db
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_DATABASE: accountsdb
+    extends:
+      file: common-config.yml
+      service: microservice-db-config
+
+  loandb:
+    container_name: loan_db
+    ports:
+      - 3307:3306
+    environment:
+      MYSQL_DATABASE: loandb
+    extends:
+      file: common-config.yml
+      service: microservice-db-config
+
+  cardsdb:
+    container_name: cards_db
+    ports:
+      - 3308:3306
+    environment:
+      MYSQL_DATABASE: cardsdb
+    extends:
+      file: common-config.yml
+      service: microservice-db-config
+
+  configserver:
+    image: abhisamd02/configserver:2.0
+    container_name: config_server
+    ports:
+      - "8071:8071"
+#    depends_on:  # removing out as rabbit MQ dependency
+#      rabbit:
+#        condition: service_healthy
+    # Adding health check(readiness & liveliness config) for config server
+    healthcheck:
+      test: "curl --fail --silent http://localhost:8071/actuator/health/readiness |grep UP || exit 1"
+      interval: 10s #re-try interval
+      timeout: 5s # give 5 seconds to respond the url
+      retries: 10 # try 10 times before marking it as unhealthy
+      start_period: 10s # give some time to app to start
+    extends:
+      file: common-config.yml
+      service: microservice-base-config
+
+  account:
+    image: abhisamd02/account:2.0
+    container_name: account_ms
+    ports:
+      - "8080:8080"
+    # Adding config of dependent service(for this instance config server) health check,
+    # now account service will start only when config server is healthy
+    depends_on:
+      configserver:
+        condition: service_healthy
+      accountsdb:
+        condition: service_healthy
+    extends:
+        file: common-config.yml
+        service: microservice-configserver-config
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb" #put service name as host.
+
+  loan:
+    image: abhisamd02/loan:2.0
+    container_name: loan_ms
+    ports:
+      - "8090:8090"
+    depends_on:
+      configserver:
+        condition: service_healthy
+      loandb:
+        condition: service_healthy
+    extends:
+      file: common-config.yml
+      service: microservice-configserver-config
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://loandb:3306/loandb" # As it's communicating internally use internal port 3306
+
+  cards:
+    image: abhisamd02/cards:2.0
+    container_name: cards_ms
+    ports:
+      - "9000:9000"
+    depends_on:
+      configserver:
+        condition: service_healthy
+      cardsdb:
+        condition: service_healthy
+    extends:
+      file: common-config.yml
+      service: microservice-configserver-config
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://cardsdb:3306/cardsdb" # As it's communicating internally use internal port 3306
+networks:
+  lazybank:
+    driver: bridge
