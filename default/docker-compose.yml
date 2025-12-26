@@ -1,0 +1,93 @@
+services:
+  rabbit:
+    image: rabbitmq:4-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck: # Adding health check for rabbitmq service
+      test: rabbitmq-diagnostics -q check_running
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    networks:
+      - lazybank
+  configserver:
+    image: abhisamd02/configserver:0.0.1-SNAPSHOT
+    container_name: config_server
+    ports:
+      - "8071:8071"
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    # Adding health check(readiness & liveliness config) for config server
+    healthcheck:
+      test: "curl --fail --silent http://localhost:8071/actuator/health/readiness |grep UP || exit 1"
+      interval: 10s #re-try interval
+      timeout: 5s # give 5 seconds to respond the url
+      retries: 10 # try 10 times before marking it as unhealthy
+      start_period: 10s # give some time to app to start
+    deploy:
+      resources:
+        limits:
+          memory: 700M
+    networks:
+      - lazybank
+  account:
+    image: abhisamd02/account:0.0.1-SNAPSHOT
+    container_name: account_ms
+    ports:
+      - "8080:8080"
+    # Adding config of dependent service(for this instance config server) health check,
+    # now account service will start only when config server is healthy
+    depends_on:
+      configserver:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    networks:
+        - lazybank
+    environment:
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_PROFILES_ACTIVE: "default"
+  loan:
+    image: abhisamd02/loan:0.0.1-SNAPSHOT
+    container_name: loan_ms
+    ports:
+      - "8090:8090"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    networks:
+      - lazybank
+    environment:
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_PROFILES_ACTIVE: "default"
+  cards:
+    image: abhisamd02/cards:0.0.1-SNAPSHOT
+    container_name: cards_ms
+    ports:
+      - "9000:9000"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+    networks:
+      - lazybank
+    environment:
+      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
+      SPRING_PROFILES_ACTIVE: "default"
+
+networks:
+  lazybank:
+    driver: bridge
