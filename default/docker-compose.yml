@@ -11,8 +11,10 @@ services:
       timeout: 5s
       retries: 10
       start_period: 5s
-    networks:
-      - lazybank
+    extends:
+      file: common-config.yml
+      service: network-deploy-service
+
   configserver:
     image: abhisamd02/configserver:0.0.1-SNAPSHOT
     container_name: config_server
@@ -28,12 +30,10 @@ services:
       timeout: 5s # give 5 seconds to respond the url
       retries: 10 # try 10 times before marking it as unhealthy
       start_period: 10s # give some time to app to start
-    deploy:
-      resources:
-        limits:
-          memory: 700M
-    networks:
-      - lazybank
+    extends:
+      file: common-config.yml
+      service: microservice-base-config
+
   account:
     image: abhisamd02/account:0.0.1-SNAPSHOT
     container_name: account_ms
@@ -44,15 +44,10 @@ services:
     depends_on:
       configserver:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-    networks:
-        - lazybank
-    environment:
-      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
-      SPRING_PROFILES_ACTIVE: "default"
+    extends:
+        file: common-config.yml
+        service: microservice-configserver-config
+
   loan:
     image: abhisamd02/loan:0.0.1-SNAPSHOT
     container_name: loan_ms
@@ -61,15 +56,10 @@ services:
     depends_on:
       configserver:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-    networks:
-      - lazybank
-    environment:
-      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
-      SPRING_PROFILES_ACTIVE: "default"
+    extends:
+      file: common-config.yml
+      service: microservice-configserver-config
+
   cards:
     image: abhisamd02/cards:0.0.1-SNAPSHOT
     container_name: cards_ms
@@ -78,15 +68,9 @@ services:
     depends_on:
       configserver:
         condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 768M
-    networks:
-      - lazybank
-    environment:
-      SPRING_CONFIG_IMPORT: "configserver:http://configserver:8071/"
-      SPRING_PROFILES_ACTIVE: "default"
+    extends:
+      file: common-config.yml
+      service: microservice-configserver-config
 
 networks:
   lazybank:
