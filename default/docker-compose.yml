@@ -25,25 +25,25 @@ services:
       file: common-config.yml
       service: microservice-db-config
 
-  loandb:
-    container_name: loan_db
-    ports:
-      - 3307:3306
-    environment:
-      MYSQL_DATABASE: loandb
-    extends:
-      file: common-config.yml
-      service: microservice-db-config
+  #  loandb:
+  #    container_name: loan_db
+  #    ports:
+  #      - 3307:3306
+  #    environment:
+  #      MYSQL_DATABASE: loandb
+  #    extends:
+  #      file: common-config.yml
+  #      service: microservice-db-config
 
-  cardsdb:
-    container_name: cards_db
-    ports:
-      - 3308:3306
-    environment:
-      MYSQL_DATABASE: cardsdb
-    extends:
-      file: common-config.yml
-      service: microservice-db-config
+  # cardsdb:
+  #   container_name: cards_db
+  #   ports:
+  #     - 3308:3306
+  #   environment:
+  #     MYSQL_DATABASE: cardsdb
+  #   extends:
+  #     file: common-config.yml
+  #     service: microservice-db-config
 
   configserver:
     image: abhisamd02/configserver:2.0
@@ -90,13 +90,13 @@ services:
     depends_on:
       configserver:
         condition: service_healthy
-      loandb:
+      accountsdb:
         condition: service_healthy
     extends:
       file: common-config.yml
       service: microservice-configserver-config
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:mysql://loandb:3306/loandb" # As it's communicating internally use internal port 3306
+      SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb" # As it's communicating internally use internal port 3306
 
   cards:
     image: abhisamd02/cards:2.0
@@ -106,13 +106,13 @@ services:
     depends_on:
       configserver:
         condition: service_healthy
-      cardsdb:
+      accountsdb:
         condition: service_healthy
     extends:
       file: common-config.yml
       service: microservice-configserver-config
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:mysql://cardsdb:3306/cardsdb" # As it's communicating internally use internal port 3306
+      SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb" # As it's communicating internally use internal port 3306
 networks:
   lazybank:
     driver: bridge
