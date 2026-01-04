@@ -46,7 +46,7 @@ services:
   #     service: microservice-db-config
 
   configserver:
-    image: abhisamd02/configserver:2.0
+    image: abhisamd02/configserver:3.0
     container_name: config_server
     ports:
       - "8071:8071"
@@ -64,8 +64,28 @@ services:
       file: common-config.yml
       service: microservice-base-config
 
+  eurekaserver:
+    image: abhisamd02/eurekaserver:3.0
+    container_name: eureka_server
+    ports:
+      - "8070:8070"
+    depends_on:
+      configserver:
+        condition: service_healthy
+    healthcheck:
+      test: "curl --fail --silent http://localhost:8070/actuator/health/readiness |grep UP || exit 1"
+      interval: 10s #re-try interval
+      timeout: 5s # give 5 seconds to respond the url
+      retries: 10 # try 10 times before marking it as unhealthy
+      start_period: 10s # give some time to app to start
+    extends:
+      file: common-config.yml
+      service: microservice-eurekaserver-config
+    environment:
+      SPRING_APPLICATION_NAME: "eurekaserver"
+
   account:
-    image: abhisamd02/account:2.0
+    image: abhisamd02/account:3.0
     container_name: account_ms
     ports:
       - "8080:8080"
@@ -76,14 +96,16 @@ services:
         condition: service_healthy
       accountsdb:
         condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
     extends:
         file: common-config.yml
-        service: microservice-configserver-config
+        service: microservice-eurekaserver-config
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb" #put service name as host.
 
   loan:
-    image: abhisamd02/loan:2.0
+    image: abhisamd02/loan:3.0
     container_name: loan_ms
     ports:
       - "8090:8090"
@@ -92,14 +114,16 @@ services:
         condition: service_healthy
       accountsdb:
         condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
     extends:
       file: common-config.yml
-      service: microservice-configserver-config
+      service: microservice-eurekaserver-config
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb" # As it's communicating internally use internal port 3306
 
   cards:
-    image: abhisamd02/cards:2.0
+    image: abhisamd02/cards:3.0
     container_name: cards_ms
     ports:
       - "9000:9000"
@@ -108,9 +132,11 @@ services:
         condition: service_healthy
       accountsdb:
         condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
     extends:
       file: common-config.yml
-      service: microservice-configserver-config
+      service: microservice-eurekaserver-config
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb" # As it's communicating internally use internal port 3306
 networks:
