@@ -122,6 +122,24 @@ services:
     environment:
       SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb" # As it's communicating internally use internal port 3306
 
+  loan1:
+    image: abhisamd02/loan:3.0
+    container_name: loan_1_ms
+    ports:
+      - "8091:8090"
+    depends_on:
+      configserver:
+        condition: service_healthy
+      accountsdb:
+        condition: service_healthy
+      eurekaserver:
+        condition: service_healthy
+    extends:
+      file: common-config.yml
+      service: microservice-eurekaserver-config
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://accountsdb:3306/accountsdb"
+
   cards:
     image: abhisamd02/cards:3.0
     container_name: cards_ms
